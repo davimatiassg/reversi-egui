@@ -18,6 +18,7 @@ struct Move {
 struct GameRoom {
     game_state: GameState,
     game_started: bool,
+    updated: usize,
 }
 
 impl GameRoom {
@@ -28,7 +29,12 @@ impl GameRoom {
                 current_turn: 1, // Começa com o jogador 1 (X)
             },
             game_started: false,
+            updated: 0,
         }
+    }
+
+    fn show_game_state(&self) {
+        println!("Tabuleiro atualizado: {:?}", self.game_state.board);
     }
 
     fn update_game_state(&mut self, player_move: Move) {
@@ -68,6 +74,7 @@ async fn handle_client(stream: tokio::net::TcpStream, game_room: Arc<Mutex<GameR
     let mut reader = io::BufReader::new(reader);
     let mut buffer = String::new();
 
+    let mut thread_updated = true;
     // Enviar o estado inicial do jogo
     {
         let game_room_lock = game_room.lock().await;
@@ -115,6 +122,7 @@ async fn main() {
 
     while let Ok((stream, _)) = listener.accept().await {
         let game_room_clone = Arc::clone(&game_room);  // Clonamos o Arc, não movemos o valor
+        
 
         tokio::spawn(async move {
             println!("Novo cliente conectado");
