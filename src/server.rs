@@ -64,6 +64,10 @@ impl GameRoom {
     // Retorna o estado atual do jogo como uma string em formato bonitinho
     pub fn get_game_state(&self) -> String {
         let mut chars = Vec::new();
+        for i in 1..50 
+        {
+            chars.push('\n');
+        }
         for row in &self.game_state.board 
         {
             
@@ -110,7 +114,8 @@ async fn handle_client(mut stream: tokio::net::TcpStream, game_room: Arc<Mutex<G
                 let player_move = Move { row, col };
 
                 match game_room_lock.update_game_state(player_move) {
-                    Ok(_) => {}
+                    Ok(_) => { let game_state_str = game_room_lock.get_game_state();
+                        let _ = writer.write_all(game_state_str.as_bytes()).await;}
                     Err(msg) => {
                         let _ = writer.write_all(msg.as_bytes()).await;
                     }
