@@ -44,7 +44,8 @@ impl GameRoom {
             self.game_started = true;
             println!("O jogo começou!");
         }
-    }
+    }  
+
 
     // Atualiza o estado do jogo com base na jogada
     pub fn update_game_state(&mut self, player_move: Move) -> Result<(), String> {
@@ -62,8 +63,16 @@ impl GameRoom {
 
     // Retorna o estado atual do jogo como uma string em formato JSON
     pub fn get_game_state(&self) -> String {
-        serde_json::to_string(&self.game_state).unwrap_or_else(|_| "Erro ao serializar o estado do jogo.".to_string())
+        match serde_json::to_string_pretty(&self.game_state)
+        {
+            Ok(string ) => { return string;
+                
+            },
+            Err(_) => return "Erro ao serializar o estado do jogo.".to_string(),
+        }
     }
+
+
 }
 
 async fn handle_client(mut stream: tokio::net::TcpStream, game_room: Arc<Mutex<GameRoom>>, player_symbol: i32) {
@@ -72,6 +81,15 @@ async fn handle_client(mut stream: tokio::net::TcpStream, game_room: Arc<Mutex<G
     let mut buffer = String::new();
 
     loop {
+        ///>>> Não é seu turno. Só atualiza pra ver se tem update
+        let mut game_room_lock = game_room.lock().await;
+        let game_state_str = game_room_lock.get_game_state();
+        let _ = writer.write_all(game_state_str.as_bytes()).await;
+        if game_room_lock.game_state.current_turn != player_symbol {
+            drop(game_room_lock);
+            continue;
+        }
+
         buffer.clear();
 
         if reader.read_line(&mut buffer).await.is_err() {
@@ -82,24 +100,15 @@ async fn handle_client(mut stream: tokio::net::TcpStream, game_room: Arc<Mutex<G
         let parts: Vec<&str> = buffer.trim().split_whitespace().collect();
         if parts.len() == 2 {
             if let (Ok(row), Ok(col)) = (parts[0].parse::<usize>(), parts[1].parse::<usize>()) {
-                let mut game_room_lock = game_room.lock().await;
+                let player_move = Move { row, col };
 
-                if game_room_lock.game_state.current_turn == player_symbol {
-                    let player_move = Move { row, col };
-
-                    match game_room_lock.update_game_state(player_move) {
-                        Ok(_) => {
-                            let game_state_str = game_room_lock.get_game_state();
-                            let _ = writer.write_all(game_state_str.as_bytes()).await;
-                        }
-                        Err(msg) => {
-                            let _ = writer.write_all(msg.as_bytes()).await;
-                        }
+                match game_room_lock.update_game_state(player_move) {
+                    Ok(_) => {}
+                    Err(msg) => {
+                        let _ = writer.write_all(msg.as_bytes()).await;
                     }
-                } else {
-                    let msg = "Não é a sua vez!\n";
-                    let _ = writer.write_all(msg.as_bytes()).await;
                 }
+
             } else {
                 let msg = "Coordenadas inválidas. Use o formato: linha coluna (ex: 1 2)\n";
                 let _ = writer.write_all(msg.as_bytes()).await;
