@@ -66,7 +66,7 @@ impl GameRoom {
         match serde_json::to_string_pretty(&self.game_state)
         {
             Ok(string ) => { return string;
-                
+                //O código da formatação bonitinha vai aqui
             },
             Err(_) => return "Erro ao serializar o estado do jogo.".to_string(),
         }
