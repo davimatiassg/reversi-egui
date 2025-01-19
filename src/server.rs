@@ -61,15 +61,22 @@ impl GameRoom {
         Ok(())
     }
 
-    // Retorna o estado atual do jogo como uma string em formato JSON
+    // Retorna o estado atual do jogo como uma string em formato bonitinho
     pub fn get_game_state(&self) -> String {
-        match serde_json::to_string_pretty(&self.game_state)
+        let mut chars = Vec::new();
+        for row in &self.game_state.board 
         {
-            Ok(string ) => { return string;
-                //O código da formatação bonitinha vai aqui
-            },
-            Err(_) => return "Erro ao serializar o estado do jogo.".to_string(),
+            
+            for cell in row
+            {
+                if(*cell == 0) { chars.push('+'); }
+                else if(*cell == 1) { chars.push('■'); }
+                else if(*cell == -1) { chars.push('□'); }
+            }
+            chars.push('\n');
         }
+        let s = chars.into_iter().collect();
+        s
     }
 
 
